@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, and, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -85,8 +84,171 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ========== 產品管理 ==========
+export async function getProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(products).where(eq(products.isActive, 1)).orderBy(desc(products.createdAt));
+}
+
+export async function getProductById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createProduct(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(products).values(data);
+  return result;
+}
+
+export async function updateProduct(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(products).set(data).where(eq(products.id, id));
+}
+
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(products).set({ isActive: 0 }).where(eq(products.id, id));
+}
+
+// ========== 客戶管理 ==========
+export async function getCustomers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(customers).orderBy(desc(customers.createdAt));
+}
+
+export async function getCustomerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createCustomer(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customers).values(data);
+  return result;
+}
+
+export async function updateCustomer(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(customers).set(data).where(eq(customers.id, id));
+}
+
+export async function deleteCustomer(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(customers).where(eq(customers.id, id));
+}
+
+// ========== 報價單管理 ==========
+export async function getQuotes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quotes).orderBy(desc(quotes.createdAt));
+}
+
+export async function getQuoteById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getQuoteByNumber(quoteNumber: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(quotes).where(eq(quotes.quoteNumber, quoteNumber)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createQuote(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(quotes).values(data);
+  return result;
+}
+
+export async function updateQuote(id: number, data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(quotes).set(data).where(eq(quotes.id, id));
+}
+
+export async function getQuotesByCustomerId(customerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quotes).where(eq(quotes.customerId, customerId)).orderBy(desc(quotes.createdAt));
+}
+
+// ========== 報價單明細 ==========
+export async function getQuoteItems(quoteId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId));
+}
+
+export async function createQuoteItem(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(quoteItems).values(data);
+}
+
+export async function deleteQuoteItems(quoteId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(quoteItems).where(eq(quoteItems.quoteId, quoteId));
+}
+
+// ========== 固定條款 ==========
+export async function getFixedTerms() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(fixedTerms);
+}
+
+export async function getFixedTermByKey(key: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(fixedTerms).where(eq(fixedTerms.key, key)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertFixedTerm(key: string, title: string, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(fixedTerms).values({ key, title, content }).onDuplicateKeyUpdate({
+    set: { title, content },
+  });
+}
+
+// ========== 公司資訊 ==========
+export async function getCompanyInfo() {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyInfo).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertCompanyInfo(data: any) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getCompanyInfo();
+  if (existing) {
+    return db.update(companyInfo).set(data).where(eq(companyInfo.id, existing.id));
+  } else {
+    return db.insert(companyInfo).values(data);
+  }
+}
