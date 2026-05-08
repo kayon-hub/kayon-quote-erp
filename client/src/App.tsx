@@ -12,6 +12,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import CustomerSignature from "./pages/CustomerSignature";
+import DataImport from "./pages/DataImport";
+import SalesPerformance from "./pages/SalesPerformance";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path={"/quotes/new"} component={CreateQuote} />
       <Route path={"/quotes/:id"} component={QuoteDetail} />
       <Route path={"/signature"} component={CustomerSignature} />
+      <Route path={"/import"} component={DataImport} />
+      <Route path={"/performance"} component={SalesPerformance} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -72,6 +72,8 @@ export const quotes = mysqlTable("quotes", {
   id: int("id").autoincrement().primaryKey(),
   quoteNumber: varchar("quoteNumber", { length: 50 }).notNull().unique(), // 報價單號 (KS-20260508-v1)
   customerId: int("customerId").notNull(), // 客戶 ID
+  salesPersonId: int("salesPersonId"), // 業務員 ID
+  signedByUserId: int("signedByUserId"), // 簽名者 ID（最終蓋章人）
   status: mysqlEnum("status", ["draft", "sent", "confirmed", "cancelled"]).default("draft").notNull(), // 狀態
   totalAmount: decimal("totalAmount", { precision: 12, scale: 2 }).notNull(), // 總金額
   notes: text("notes"), // 備註

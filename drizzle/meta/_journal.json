@@ -29,6 +29,13 @@
       "when": 1778243276916,
       "tag": "0003_fantastic_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778244147764,
+      "tag": "0004_flashy_sauron",
+      "breakpoints": true
     }
   ]
 }
