@@ -1,6 +1,6 @@
 import { eq, desc, and, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo, serviceTypes, signatures } from "../drizzle/schema";
+import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo, serviceTypes, signatures, employees, sessions } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -395,4 +395,120 @@ export async function updateQuoteStatus(quoteId: number, status: 'draft' | 'sent
     .update(quotes)
     .set({ status, updatedAt: new Date() })
     .where(eq(quotes.id, quoteId));
+}
+
+
+// ========== 員工管理 ==========
+export async function getEmployeeByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(employees)
+    .where(eq(employees.username, username))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getEmployeeById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(employees)
+    .where(eq(employees.id, id))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getEmployees() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(employees)
+    .where(eq(employees.isActive, 1));
+}
+
+export async function createEmployee(data: {
+  username: string;
+  passwordHash: string;
+  name: string;
+  email: string;
+  department?: string;
+  role?: 'admin' | 'sales' | 'hr' | 'viewer';
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(employees).values({
+    username: data.username,
+    passwordHash: data.passwordHash,
+    name: data.name,
+    email: data.email,
+    department: data.department || null,
+    role: data.role || 'viewer',
+    isActive: 1,
+  });
+}
+
+export async function updateEmployee(id: number, data: Partial<{
+  name: string;
+  email: string;
+  department: string;
+  role: 'admin' | 'sales' | 'hr' | 'viewer';
+  isActive: number;
+  lastLoginAt: Date;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(employees)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(employees.id, id));
+}
+
+export async function deleteEmployee(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(employees).where(eq(employees.id, id));
+}
+
+export async function updateEmployeeLastLogin(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .update(employees)
+    .set({ lastLoginAt: new Date() })
+    .where(eq(employees.id, id));
+}
+
+// ========== 會話管理 ==========
+export async function createSession(data: {
+  id: string;
+  employeeId: number;
+  token: string;
+  ipAddress?: string;
+  userAgent?: string;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(sessions).values(data);
+}
+
+export async function getSessionById(id: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, id))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function deleteSession(id: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(sessions).where(eq(sessions.id, id));
 }

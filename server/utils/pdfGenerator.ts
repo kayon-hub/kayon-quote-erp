@@ -19,7 +19,13 @@ interface PDFGeneratorInput {
  */
 async function fetchImageAsBase64(url: string): Promise<string> {
   try {
-    const response = await fetch(url);
+    // 如果是相對 URL，轉換為絕對 URL
+    let absoluteUrl = url;
+    if (url.startsWith('/')) {
+      const baseUrl = process.env.VITE_APP_URL || 'http://localhost:3000';
+      absoluteUrl = `${baseUrl}${url}`;
+    }
+    const response = await fetch(absoluteUrl);
     const buffer = await response.buffer();
     return buffer.toString('base64');
   } catch (error) {

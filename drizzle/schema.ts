@@ -181,3 +181,42 @@ export const signatures = mysqlTable("signatures", {
 
 export type Signature = typeof signatures.$inferSelect;
 export type InsertSignature = typeof signatures.$inferInsert;
+
+/**
+ * 員工表
+ * 儲存公司員工的帳號、密碼、角色、部門等資訊
+ * 用於替換 Manus OAuth，實現自主的帳號管理系統
+ */
+export const employees = mysqlTable("employees", {
+  id: int("id").autoincrement().primaryKey(),
+  username: varchar("username", { length: 100 }).notNull().unique(), // 員工帳號
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(), // 密碼雜湊值
+  name: varchar("name", { length: 255 }).notNull(), // 員工姓名
+  email: varchar("email", { length: 255 }).notNull().unique(), // 員工 Email
+  department: varchar("department", { length: 100 }), // 部門
+  role: mysqlEnum("role", ["admin", "sales", "hr", "viewer"]).default("viewer").notNull(), // 角色
+  isActive: int("isActive").default(1).notNull(), // 是否啟用
+  lastLoginAt: timestamp("lastLoginAt"), // 最後登入時間
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Employee = typeof employees.$inferSelect;
+export type InsertEmployee = typeof employees.$inferInsert;
+
+/**
+ * 會話表
+ * 儲存員工的登入會話資訊
+ */
+export const sessions = mysqlTable("sessions", {
+  id: varchar("id", { length: 255 }).primaryKey(), // 會話 ID
+  employeeId: int("employeeId").notNull(), // 員工 ID
+  token: varchar("token", { length: 500 }).notNull(), // JWT Token
+  ipAddress: varchar("ipAddress", { length: 45 }), // 登入 IP
+  userAgent: text("userAgent"), // 設備資訊
+  expiresAt: timestamp("expiresAt").notNull(), // 過期時間
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Session = typeof sessions.$inferSelect;
+export type InsertSession = typeof sessions.$inferInsert;

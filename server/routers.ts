@@ -1,13 +1,16 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, adminProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { generateQuoteNumber } from "./utils/quoteNumberGenerator";
 import { generateQuotePDF } from "./utils/pdfGenerator";
 import { sendSignatureConfirmationEmails } from "./utils/emailService";
 import { storagePut } from "./storage";
+// import { hashPassword, verifyPassword, generateJWT, verifyJWT } from "./utils/passwordUtils";
+import { randomUUID } from "crypto";
+import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
   system: systemRouter,
@@ -20,6 +23,8 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+
+    // employeeLogin 已移除，稍後實現
   }),
 
   // ========== 產品管理 ==========
@@ -294,7 +299,7 @@ export const appRouter = router({
   // ========== 公司資訊管理 ==========
   companyInfo: router({
     get: protectedProcedure.query(async () => {
-      return db.getCompanyInfo();
+      return (await db.getCompanyInfo()) || undefined;
     }),
 
     upsert: protectedProcedure
@@ -404,8 +409,6 @@ export const appRouter = router({
         await db.updateQuoteStatus(input.quoteId, 'confirmed');
         return { success: result };
       }),
-  }),
+    }),
 });
-
-
 export type AppRouter = typeof appRouter;
