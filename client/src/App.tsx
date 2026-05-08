@@ -5,6 +5,8 @@ import Dashboard from "@/pages/Dashboard";
 import Products from "@/pages/Products";
 import Customers from "@/pages/Customers";
 import Quotes from "@/pages/Quotes";
+import CreateQuote from "@/pages/CreateQuote";
+import QuoteDetail from "@/pages/QuoteDetail";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -18,8 +20,8 @@ function Router() {
       <Route path={"/products"} component={Products} />
       <Route path={"/customers"} component={Customers} />
       <Route path={"/quotes"} component={Quotes} />
-      <Route path={"/quotes/new"} component={() => <div>新建報價單 (待實現)</div>} />
-      <Route path={"/quotes/:id"} component={() => <div>報價單詳情 (待實現)</div>} />
+      <Route path={"/quotes/new"} component={CreateQuote} />
+      <Route path={"/quotes/:id"} component={QuoteDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
