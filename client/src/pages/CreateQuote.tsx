@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,7 @@ export default function CreateQuote() {
   const [, setLocation] = useLocation();
   const { data: customers } = trpc.customers.list.useQuery();
   const { data: products } = trpc.products.list.useQuery();
+  const { data: fixedTerms } = trpc.fixedTerms.list.useQuery();
   const createQuote = trpc.quotes.create.useMutation();
 
   const [customerId, setCustomerId] = useState<number | null>(null);
@@ -25,6 +26,16 @@ export default function CreateQuote() {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 自動帶入固定備註
+  useEffect(() => {
+    if (fixedTerms && fixedTerms.length > 0 && !notes) {
+      const defaultNotes = fixedTerms
+        .map((term) => `${term.title}\n${term.content}`)
+        .join("\n\n");
+      setNotes(defaultNotes);
+    }
+  }, [fixedTerms]);
 
   const selectedCustomer = customers?.find((c) => c.id === customerId);
   const selectedProducts = items
@@ -204,8 +215,13 @@ export default function CreateQuote() {
               </div>
             </div>
 
-            {/* 已添加的產品列表 */}
-            {items.length > 0 && (
+               {/* 備註 */}
+            {fixedTerms && fixedTerms.length > 0 && (
+              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                <p>✓ 已自動帶入 {fixedTerms.length} 項固定條款</p>
+              </div>
+            )}
+            {notes.length > 0 && (
               <div className="mt-6 space-y-3">
                 <h3 className="font-medium text-foreground">已添加的產品</h3>
                 {items.map((item, index) => {
