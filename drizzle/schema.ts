@@ -155,3 +155,27 @@ export const serviceTypes = mysqlTable("serviceTypes", {
 
 export type ServiceType = typeof serviceTypes.$inferSelect;
 export type InsertServiceType = typeof serviceTypes.$inferInsert;
+
+
+/**
+ * 簽名記錄表
+ * 儲存客戶的電子簽名、OTP 驗證、時間戳、IP 與設備資訊
+ */
+export const signatures = mysqlTable("signatures", {
+  id: int("id").autoincrement().primaryKey(),
+  quoteId: int("quoteId").notNull(), // 報價單 ID
+  customerId: int("customerId").notNull(), // 客戶 ID
+  signatureImageUrl: varchar("signatureImageUrl", { length: 500 }), // 簽名圖片 URL
+  signatureImageKey: varchar("signatureImageKey", { length: 255 }), // 簽名圖片儲存鑰匙
+  otp: varchar("otp", { length: 6 }).notNull(), // OTP 驗證碼
+  otpVerifiedAt: timestamp("otpVerifiedAt"), // OTP 驗證時間
+  ipAddress: varchar("ipAddress", { length: 45 }), // 客戶 IP 地址
+  userAgent: text("userAgent"), // 客戶設備資訊
+  signedAt: timestamp("signedAt"), // 簽名完成時間
+  status: mysqlEnum("status", ["pending", "verified", "completed"]).default("pending").notNull(), // 簽名狀態
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Signature = typeof signatures.$inferSelect;
+export type InsertSignature = typeof signatures.$inferInsert;

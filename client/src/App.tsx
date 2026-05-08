@@ -11,6 +11,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import CustomerSignature from "./pages/CustomerSignature";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/quotes"} component={Quotes} />
       <Route path={"/quotes/new"} component={CreateQuote} />
       <Route path={"/quotes/:id"} component={QuoteDetail} />
+      <Route path={"/signature"} component={CustomerSignature} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `signatures` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`quoteId` int NOT NULL,\n\t`customerId` int NOT NULL,\n\t`signatureImageUrl` varchar(500),\n\t`signatureImageKey` varchar(255),\n\t`otp` varchar(6) NOT NULL,\n\t`otpVerifiedAt` timestamp,\n\t`ipAddress` varchar(45),\n\t`userAgent` text,\n\t`signedAt` timestamp,\n\t`status` enum('pending','verified','completed') NOT NULL DEFAULT 'pending',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `signatures_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user GrK5256UuVhPRJo.root --database 7oL8ynvCVb5GvtYeu9Ws9j --execute CREATE TABLE `signatures` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`quoteId` int NOT NULL,\n\t`customerId` int NOT NULL,\n\t`signatureImageUrl` varchar(500),\n\t`signatureImageKey` varchar(255),\n\t`otp` varchar(6) NOT NULL,\n\t`otpVerifiedAt` timestamp,\n\t`ipAddress` varchar(45),\n\t`userAgent` text,\n\t`signedAt` timestamp,\n\t`status` enum('pending','verified','completed') NOT NULL DEFAULT 'pending',\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `signatures_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1890
+}

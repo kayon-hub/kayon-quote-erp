@@ -1,6 +1,6 @@
 import { eq, desc, and, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo, serviceTypes } from "../drizzle/schema";
+import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo, serviceTypes, signatures } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -307,4 +307,92 @@ export async function calculateWorkload() {
   }
 
   return { totalDays, projects };
+}
+
+
+// ========== 簽名管理 ==========
+export async function createSignature(data: {
+  quoteId: number;
+  customerId: number;
+  otp: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(signatures).values({
+    quoteId: data.quoteId,
+    customerId: data.customerId,
+    otp: data.otp,
+    ipAddress: data.ipAddress,
+    userAgent: data.userAgent,
+    status: 'pending',
+  });
+
+  return result;
+}
+
+export async function getSignatureByQuoteId(quoteId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .select()
+    .from(signatures)
+    .where(eq(signatures.quoteId, quoteId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function verifyOTP(quoteId: number, otp: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const signature = await db
+    .select()
+    .from(signatures)
+    .where(and(
+      eq(signatures.quoteId, quoteId),
+      eq(signatures.otp, otp)
+    ))
+    .limit(1);
+
+  if (signature.length === 0) return null;
+
+  // 更新 OTP 驗證時間
+  await db
+    .update(signatures)
+    .set({ otpVerifiedAt: new Date(), status: 'verified' })
+    .where(eq(signatures.id, signature[0].id));
+
+  return signature[0];
+}
+
+export async function updateSignatureWithImage(signatureId: number, imageUrl: string, imageKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(signatures)
+    .set({
+      signatureImageUrl: imageUrl,
+      signatureImageKey: imageKey,
+      signedAt: new Date(),
+      status: 'completed',
+    })
+    .where(eq(signatures.id, signatureId));
+}
+
+
+// ========== 報價單狀態更新 ==========
+export async function updateQuoteStatus(quoteId: number, status: 'draft' | 'sent' | 'confirmed' | 'cancelled') {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(quotes)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(quotes.id, quoteId));
 }

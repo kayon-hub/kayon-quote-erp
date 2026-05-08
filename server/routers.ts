@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { generateQuoteNumber } from "./utils/quoteNumberGenerator";
 import { generateQuotePDF } from "./utils/pdfGenerator";
+import { sendSignatureConfirmationEmails } from "./utils/emailService";
 import { storagePut } from "./storage";
 
 export const appRouter = router({
@@ -324,6 +325,87 @@ export const appRouter = router({
       return db.getServiceTypes();
     }),
   }),
+
+  // ========== 簽名管理 ==========
+  signatures: router({
+    initiate: publicProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        customerId: z.number(),
+        ipAddress: z.string().optional(),
+        userAgent: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const otp = Math.random().toString().slice(2, 8).padStart(6, '0');
+        await db.createSignature({
+          quoteId: input.quoteId,
+          customerId: input.customerId,
+          otp,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+        });
+        return { success: true, message: 'OTP generated' };
+      }),
+
+    verifyOTP: publicProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        otp: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const signature = await db.verifyOTP(input.quoteId, input.otp);
+        if (!signature) throw new Error('Invalid OTP');
+        return { success: true, signatureId: signature.id };
+      }),
+
+    uploadSignatureImage: publicProcedure
+      .input(z.object({
+        signatureId: z.number(),
+        imageData: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.imageData, 'base64');
+        const fileKey = `signatures/signature_${input.signatureId}.png`;
+        const { url, key } = await storagePut(fileKey, buffer, 'image/png');
+        await db.updateSignatureWithImage(input.signatureId, url, key);
+        return { success: true, url };
+      }),
+
+    getByQuoteId: publicProcedure
+      .input(z.object({ quoteId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getSignatureByQuoteId(input.quoteId);
+      }),
+
+    sendConfirmationEmails: publicProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        customerId: z.number(),
+        pdfUrl: z.string(),
+        signatureImageUrl: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const quote = await db.getQuoteById(input.quoteId);
+        const customer = await db.getCustomerById(input.customerId);
+
+        if (!quote || !customer) {
+          throw new Error('Quote or customer not found');
+        }
+
+        const result = await sendSignatureConfirmationEmails(
+          customer.email || '',
+          customer.companyName,
+          process.env.OWNER_EMAIL || 'owner@kayonstudio.com',
+          quote.quoteNumber,
+          input.pdfUrl,
+          input.signatureImageUrl
+        );
+
+        await db.updateQuoteStatus(input.quoteId, 'confirmed');
+        return { success: result };
+      }),
+  }),
 });
+
 
 export type AppRouter = typeof appRouter;
