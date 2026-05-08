@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight, AlertCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -26,6 +26,9 @@ export default function CreateQuote() {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 查詢工作量
+  const { data: workload } = trpc.workload.calculate.useQuery();
 
   // 自動帶入固定備註
   useEffect(() => {
@@ -112,6 +115,39 @@ export default function CreateQuote() {
             選擇客戶和產品，系統將自動計算金額
           </p>
         </div>
+
+        {/* 工作量警告 */}
+        {workload && workload.totalDays > 40 && (
+          <div className={`rounded-lg border p-4 ${
+            workload.totalDays > 60
+              ? "border-destructive/50 bg-destructive/5"
+              : "border-yellow-500/50 bg-yellow-500/5"
+          }`}>
+            <div className="flex items-start gap-3">
+              <AlertCircle className={`h-5 w-5 flex-shrink-0 ${
+                workload.totalDays > 60 ? "text-destructive" : "text-yellow-600"
+              }`} />
+              <div>
+                <p className={`font-medium ${
+                  workload.totalDays > 60 ? "text-destructive" : "text-yellow-700"
+                }`}>
+                  ⚠️ 工作量提醒
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  目前已累積 <strong>{workload.totalDays} 個工作天</strong>，
+                  {workload.totalDays > 60
+                    ? "已超過 60 天，建議暫停接新案件。"
+                    : "已超過 40 天，請評估是否還能接新案件。"}
+                </p>
+                {workload.projects.length > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    進行中的案件：{workload.projects.map(p => `${p.customerName}(${p.estimatedDays}天)`).join("、")}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 客戶選擇 */}
         <Card className="p-6">

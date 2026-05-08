@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, FileText, Users, Package } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import WorkloadCard from "@/components/WorkloadCard";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -58,6 +59,9 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* 工作量統計 */}
+        <WorkloadCard />
 
         {/* 統計卡片 */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

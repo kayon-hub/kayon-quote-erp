@@ -138,3 +138,20 @@ export const companyInfo = mysqlTable("companyInfo", {
 
 export type CompanyInfo = typeof companyInfo.$inferSelect;
 export type InsertCompanyInfo = typeof companyInfo.$inferInsert;
+
+/**
+ * 服務類型與工作天數配置表
+ * 儲存不同服務類型的工作天數範圍
+ */
+export const serviceTypes = mysqlTable("serviceTypes", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // 服務名稱
+  minDays: int("minDays").notNull(), // 最少工作天數
+  maxDays: int("maxDays").notNull(), // 最多工作天數
+  isActive: int("isActive").default(1).notNull(), // 是否啟用
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ServiceType = typeof serviceTypes.$inferSelect;
+export type InsertServiceType = typeof serviceTypes.$inferInsert;

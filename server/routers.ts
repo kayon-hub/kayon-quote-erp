@@ -307,6 +307,17 @@ export const appRouter = router({
         return db.upsertCompanyInfo(input);
       }),
   }),
+
+  // ========== 工作量管理 ==========
+  workload: router({
+    calculate: protectedProcedure.query(async () => {
+      return db.calculateWorkload();
+    }),
+
+    getServiceTypes: protectedProcedure.query(async () => {
+      return db.getServiceTypes();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

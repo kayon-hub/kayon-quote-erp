@@ -1,6 +1,6 @@
 import { eq, desc, and, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo } from "../drizzle/schema";
+import { InsertUser, users, products, customers, quotes, quoteItems, fixedTerms, companyInfo, serviceTypes } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -251,4 +251,60 @@ export async function upsertCompanyInfo(data: any) {
   } else {
     return db.insert(companyInfo).values(data);
   }
+}
+
+// ========== 服務類型 ==========
+export async function getServiceTypes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(serviceTypes).where(eq(serviceTypes.isActive, 1));
+}
+
+// ========== 工作量計算 ==========
+export async function calculateWorkload() {
+  const db = await getDb();
+  if (!db) return { totalDays: 0, projects: [] };
+
+  // 取得所有已確認的報價單
+  const confirmedQuotes = await db
+    .select()
+    .from(quotes)
+    .where(eq(quotes.status, 'confirmed'));
+
+  // 取得所有服務類型
+  const services = await db.select().from(serviceTypes);
+  const serviceMap = new Map(services.map(s => [s.name, s]));
+
+  // 計算每個報價單的工作天數
+  let totalDays = 0;
+  const projects = [];
+
+  for (const quote of confirmedQuotes) {
+    const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, quote.id));
+    const customer = await db.select().from(customers).where(eq(customers.id, quote.customerId)).limit(1);
+    
+    let projectDays = 0;
+    const serviceNames = new Set<string>();
+
+    for (const item of items) {
+      const service = serviceMap.get(item.productName);
+      if (service) {
+        // 取平均工作天數
+        projectDays += Math.ceil((service.minDays + service.maxDays) / 2);
+        serviceNames.add(item.productName);
+      }
+    }
+
+    totalDays += projectDays;
+    projects.push({
+      id: quote.id,
+      quoteNumber: quote.quoteNumber,
+      customerName: customer.length > 0 ? customer[0].companyName : 'Unknown',
+      services: Array.from(serviceNames),
+      estimatedDays: projectDays,
+      createdAt: quote.createdAt,
+    });
+  }
+
+  return { totalDays, projects };
 }
