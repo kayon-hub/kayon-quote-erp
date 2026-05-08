@@ -2,10 +2,11 @@ import { useParams, useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Share2, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Download, Share2, Edit, Trash2, ArrowLeft, Eye } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState } from "react";
+import PDFPreview from "@/components/PDFPreview";
 
 export default function QuoteDetail() {
   const params = useParams();
@@ -158,6 +159,12 @@ export default function QuoteDetail() {
             )}
             {getPDFUrl.data?.url && (
               <>
+                <PDFPreview
+                  quoteId={quote.id}
+                  quoteNumber={quote.quoteNumber}
+                  pdfUrl={getPDFUrl.data.url}
+                  onShare={handleShareLine}
+                />
                 <Button
                   onClick={handleDownloadPDF}
                   className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
