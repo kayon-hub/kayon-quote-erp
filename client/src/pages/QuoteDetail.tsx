@@ -67,15 +67,10 @@ export default function QuoteDetail() {
     try {
       const message = `KAYON STUDIO 報價單\n\n報價單號：${quote.quoteNumber}\n客戶：${quote.customer?.companyName}\n金額：$${parseFloat(quote.totalAmount.toString()).toLocaleString()} NTD\n\n${getPDFUrl.data?.url ? `查看報價單：${getPDFUrl.data.url}` : ""}`;
 
-      if (navigator.share) {
-        await navigator.share({
-          title: `報價單 ${quote.quoteNumber}`,
-          text: message,
-        });
-      } else {
-        await navigator.clipboard.writeText(message);
-        toast.success("已複製到剪貼板");
-      }
+      // LINE 分享連結
+      const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
+      window.open(lineShareUrl, '_blank');
+      toast.success("已開啟 LINE 分享");
     } catch (error) {
       toast.error("分享失敗");
     }

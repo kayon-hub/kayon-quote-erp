@@ -1,5 +1,8 @@
 import { PDFDocument, PDFPage, rgb, degrees } from 'pdf-lib';
 import { Quote, Customer, QuoteItem, CompanyInfo, FixedTerm } from '../../drizzle/schema';
+import fetch from 'node-fetch';
+import type { Response } from 'node-fetch';
+import fontkit from '@pdf-lib/fontkit';
 
 interface PDFGeneratorInput {
   quote: Quote;
@@ -7,17 +10,37 @@ interface PDFGeneratorInput {
   items: QuoteItem[];
   companyInfo: CompanyInfo | undefined;
   fixedTerms: FixedTerm[];
+  logoUrl?: string;
+  signatureUrl?: string;
+}
+
+/**
+ * 從 URL 取得圖片並轉換為 Base64
+ */
+async function fetchImageAsBase64(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    const buffer = await response.buffer();
+    return buffer.toString('base64');
+  } catch (error) {
+    console.warn(`Failed to fetch image from ${url}:`, error);
+    return '';
+  }
 }
 
 /**
  * 生成 PDF 報價單
- * 依照 KAYON STUDIO 既有範本格式排版
+ * 依照 KAYON STUDIO 既有範本格式排版，含 LOGO 與電子簽名
  */
 export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer> {
-  const { quote, customer, items, companyInfo, fixedTerms } = input;
+  const { quote, customer, items, companyInfo, fixedTerms, logoUrl, signatureUrl } = input;
 
   // 建立 PDF 文件
   const pdfDoc = await PDFDocument.create();
+  
+  // 註冊 fontkit 以支援中文字體
+  pdfDoc.registerFontkit(fontkit);
+  
   const page = pdfDoc.addPage([595, 842]); // A4 尺寸
   const { width, height } = page.getSize();
 
@@ -30,20 +53,47 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
   const darkGray = rgb(0.2, 0.2, 0.2);
   const lightGray = rgb(0.9, 0.9, 0.9);
   const black = rgb(0, 0, 0);
+  const gold = rgb(0.85, 0.73, 0.35); // KAYON 金色
 
   let yPosition = height - 40;
 
+  // ========== 頁首：LOGO 與標題 ==========
+  if (logoUrl) {
+    try {
+      const logoBase64 = await fetchImageAsBase64(logoUrl);
+      if (logoBase64) {
+        const logoImage = await pdfDoc.embedPng(Buffer.from(logoBase64, 'base64'));
+        const logoDims = logoImage.scale(0.15);
+        page.drawImage(logoImage, {
+          x: 40,
+          y: yPosition - 60,
+          width: logoDims.width,
+          height: logoDims.height,
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to embed logo:', error);
+    }
+  }
+
   // 標題
-  page.drawText('KAYON STUDIO ｜ 報價單 (Quotation)', {
-    x: 40,
-    y: yPosition,
+  page.drawText('KAYON STUDIO ｜ 報價單', {
+    x: 150,
+    y: yPosition - 20,
     size: titleFontSize,
     color: darkGray,
   });
 
-  yPosition -= 40;
+  page.drawText('(Quotation)', {
+    x: 150,
+    y: yPosition - 40,
+    size: 12,
+    color: gold,
+  });
 
-  // 客戶資訊區
+  yPosition -= 80;
+
+  // ========== 客戶資訊區 ==========
   page.drawText('客戶資訊 (Customer Information)', {
     x: 40,
     y: yPosition,
@@ -102,7 +152,7 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
 
   yPosition -= 15;
 
-  // 報價資訊區
+  // ========== 報價資訊區 ==========
   page.drawText('報價資訊 (Quotation Info)', {
     x: 350,
     y: yPosition + 20,
@@ -127,7 +177,7 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
 
   yPosition -= 40;
 
-  // 項目表格
+  // ========== 項目表格 ==========
   page.drawText('項目明細 (Items)', {
     x: 40,
     y: yPosition,
@@ -190,7 +240,7 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
 
   yPosition -= 10;
 
-  // 總金額
+  // ========== 總金額 ==========
   page.drawText('總金額 (Total Amount):', {
     x: 350,
     y: yPosition,
@@ -202,12 +252,12 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
     x: 450,
     y: yPosition,
     size: fontSize,
-    color: darkGray,
+    color: gold,
   });
 
   yPosition -= 30;
 
-  // 固定條款
+  // ========== 固定條款 ==========
   const fixedTermsMap = new Map(fixedTerms.map(t => [t.key, t]));
 
   // 製作流程
@@ -219,7 +269,7 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
       size: smallFontSize,
       color: black,
     });
-    yPosition -= 30;
+    yPosition -= 25;
   }
 
   // 版權說明
@@ -231,7 +281,7 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
       size: smallFontSize,
       color: black,
     });
-    yPosition -= 30;
+    yPosition -= 25;
   }
 
   // 付款方式
@@ -243,12 +293,12 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
       size: smallFontSize,
       color: black,
     });
-    yPosition -= 30;
+    yPosition -= 25;
   }
 
   yPosition -= 10;
 
-  // 匯款資訊
+  // ========== 匯款資訊 ==========
   if (companyInfo) {
     page.drawText('匯款資訊 (Bank Transfer Information)', {
       x: 40,
@@ -281,6 +331,60 @@ export async function generateQuotePDF(input: PDFGeneratorInput): Promise<Buffer
       color: black,
     });
   }
+
+  yPosition -= 30;
+
+  // ========== 簽名區 ==========
+  page.drawText('簽名 (Signature)', {
+    x: 40,
+    y: yPosition,
+    size: fontSize,
+    color: darkGray,
+  });
+
+  yPosition -= 25;
+
+  // 嵌入電子簽名
+  if (signatureUrl) {
+    try {
+      const signatureBase64 = await fetchImageAsBase64(signatureUrl);
+      if (signatureBase64) {
+        const signatureImage = await pdfDoc.embedPng(Buffer.from(signatureBase64, 'base64'));
+        const signatureDims = signatureImage.scale(0.25);
+        page.drawImage(signatureImage, {
+          x: 40,
+          y: yPosition - signatureDims.height - 10,
+          width: signatureDims.width,
+          height: signatureDims.height,
+        });
+        yPosition -= signatureDims.height + 20;
+      }
+    } catch (error) {
+      console.warn('Failed to embed signature:', error);
+      page.drawText('_________________________', {
+        x: 40,
+        y: yPosition,
+        size: smallFontSize,
+        color: black,
+      });
+      yPosition -= 20;
+    }
+  } else {
+    page.drawText('_________________________', {
+      x: 40,
+      y: yPosition,
+      size: smallFontSize,
+      color: black,
+    });
+    yPosition -= 20;
+  }
+
+  page.drawText('KAYON STUDIO', {
+    x: 40,
+    y: yPosition,
+    size: smallFontSize,
+    color: darkGray,
+  });
 
   // 轉換為 Buffer
   const pdfBytes = await pdfDoc.save();

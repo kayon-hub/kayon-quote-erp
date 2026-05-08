@@ -229,6 +229,10 @@ export const appRouter = router({
         const companyInfo = await db.getCompanyInfo();
         const fixedTerms = await db.getFixedTerms();
 
+        // LOGO 與簽名 URL
+        const logoUrl = '/manus-storage/kayon_logo_d536da1f.png';
+        const signatureUrl = '/manus-storage/簽名01_36b32eb9.png';
+
         // 生成 PDF
         const pdfBuffer = await generateQuotePDF({
           quote,
@@ -236,6 +240,8 @@ export const appRouter = router({
           items,
           companyInfo,
           fixedTerms,
+          logoUrl,
+          signatureUrl,
         });
 
         // 上傳至雲端
