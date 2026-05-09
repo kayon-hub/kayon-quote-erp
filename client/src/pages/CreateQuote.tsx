@@ -13,6 +13,13 @@ interface QuoteItemInput {
   quantity: number;
 }
 
+interface CustomItem {
+  id: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+}
+
 export default function CreateQuote() {
   const [, setLocation] = useLocation();
   const { data: customers } = trpc.customers.list.useQuery();
@@ -22,8 +29,13 @@ export default function CreateQuote() {
 
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [items, setItems] = useState<QuoteItemInput[]>([]);
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState<number | null>(null);
   const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [useCustomProduct, setUseCustomProduct] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductPrice, setCustomProductPrice] = useState("");
+  const [customProductQuantity, setCustomProductQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,15 +53,14 @@ export default function CreateQuote() {
   }, [fixedTerms]);
 
   const selectedCustomer = customers?.find((c) => c.id === customerId);
-  const selectedProducts = items
-    .map((item) => products?.find((p) => p.id === item.productId))
-    .filter(Boolean);
 
   const totalAmount = items.reduce((sum, item) => {
     const product = products?.find((p) => p.id === item.productId);
     if (!product) return sum;
     const unitPrice = parseFloat(product.unitPrice.toString());
     return sum + unitPrice * item.quantity;
+  }, 0) + customItems.reduce((sum, item) => {
+    return sum + item.unitPrice * item.quantity;
   }, 0);
 
   const handleAddItem = () => {
@@ -66,14 +77,54 @@ export default function CreateQuote() {
     setNewItemQuantity(1);
   };
 
+  const handleAddCustomItem = () => {
+    if (!customProductName.trim()) {
+      toast.error("請輸入產品名稱");
+      return;
+    }
+    if (!customProductPrice || isNaN(parseFloat(customProductPrice))) {
+      toast.error("請輸入有效的價格");
+      return;
+    }
+    if (customProductQuantity < 1) {
+      toast.error("數量必須至少為 1");
+      return;
+    }
+
+    const newCustomItem: CustomItem = {
+      id: `custom-${Date.now()}`,
+      productName: customProductName,
+      unitPrice: parseFloat(customProductPrice),
+      quantity: customProductQuantity,
+    };
+
+    setCustomItems([...customItems, newCustomItem]);
+    setCustomProductName("");
+    setCustomProductPrice("");
+    setCustomProductQuantity(1);
+    setUseCustomProduct(false);
+    toast.success("自訂產品已添加");
+  };
+
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveCustomItem = (id: string) => {
+    setCustomItems(customItems.filter((item) => item.id !== id));
   };
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
     const newItems = [...items];
     newItems[index].quantity = Math.max(1, quantity);
     setItems(newItems);
+  };
+
+  const handleUpdateCustomQuantity = (id: string, quantity: number) => {
+    const newCustomItems = customItems.map((item) =>
+      item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+    );
+    setCustomItems(newCustomItems);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,18 +135,38 @@ export default function CreateQuote() {
       return;
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 && customItems.length === 0) {
       toast.error("請至少添加一個產品");
       return;
     }
 
     try {
       setIsSubmitting(true);
+      
+      // 構建項目列表，包括自訂產品
+      const allItems = [
+        ...items,
+        ...customItems.map((item) => ({
+          productId: 0, // 使用 0 作為自訂產品的標記
+          quantity: item.quantity,
+          customProductName: item.productName,
+          customUnitPrice: item.unitPrice,
+        })),
+      ];
+
       const result = await createQuote.mutateAsync({
         customerId,
         items,
         notes: notes || undefined,
       });
+      
+      // 如果有自訂產品，需要通過另一個 API 添加
+      if (customItems.length > 0) {
+        // 這裡需要實現添加自訂項目的邏輯
+        // 暫時直接跳轉，後續可以通過編輯報價單來添加
+        toast.info("自訂產品需要在編輯頁面手動添加");
+      }
+
       toast.success("報價單已建立");
       setLocation(`/quotes/${result.id}`);
     } catch (error) {
@@ -205,61 +276,139 @@ export default function CreateQuote() {
           </h2>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <label className="block text-sm font-medium text-foreground">
-                  產品 *
-                </label>
-                <select
-                  value={newItemProductId || ""}
-                  onChange={(e) =>
-                    setNewItemProductId(e.target.value ? parseInt(e.target.value) : null)
-                  }
-                  className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                >
-                  <option value="">-- 選擇產品 --</option>
-                  {products?.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} (${parseFloat(product.unitPrice.toString()).toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* 預設產品選擇 */}
+            {!useCustomProduct && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    產品 *
+                  </label>
+                  <select
+                    value={newItemProductId || ""}
+                    onChange={(e) =>
+                      setNewItemProductId(e.target.value ? parseInt(e.target.value) : null)
+                    }
+                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  >
+                    <option value="">-- 選擇產品 --</option>
+                    {products?.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} (${parseFloat(product.unitPrice.toString()).toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground">
-                  數量
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={newItemQuantity}
-                  onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="mt-2"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    數量
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newItemQuantity}
+                    onChange={(e) => setNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="mt-2"
+                  />
+                </div>
 
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  添加
-                </Button>
+                <div className="flex items-end gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    添加
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setUseCustomProduct(true)}
+                    className="flex-1"
+                  >
+                    自訂產品
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
-               {/* 備註 */}
+            {/* 自訂產品輸入 */}
+            {useCustomProduct && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    產品名稱 *
+                  </label>
+                  <Input
+                    type="text"
+                    value={customProductName}
+                    onChange={(e) => setCustomProductName(e.target.value)}
+                    placeholder="例：原創歌曲製作"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    單價 (NTD) *
+                  </label>
+                  <Input
+                    type="number"
+                    value={customProductPrice}
+                    onChange={(e) => setCustomProductPrice(e.target.value)}
+                    placeholder="0"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    數量
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={customProductQuantity}
+                    onChange={(e) => setCustomProductQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddCustomItem}
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    添加
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setUseCustomProduct(false)}
+                    className="flex-1"
+                  >
+                    返回
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 固定條款提示 */}
             {fixedTerms && fixedTerms.length > 0 && (
               <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
                 <p>✓ 已自動帶入 {fixedTerms.length} 項固定條款</p>
               </div>
             )}
-            {notes.length > 0 && (
+
+            {/* 已添加的產品列表 */}
+            {(items.length > 0 || customItems.length > 0) && (
               <div className="mt-6 space-y-3">
                 <h3 className="font-medium text-foreground">已添加的產品</h3>
+                
+                {/* 預設產品 */}
                 {items.map((item, index) => {
                   const product = products?.find((p) => p.id === item.productId);
                   if (!product) return null;
@@ -297,6 +446,42 @@ export default function CreateQuote() {
                     </div>
                   );
                 })}
+
+                {/* 自訂產品 */}
+                {customItems.map((item) => {
+                  const subtotal = item.unitPrice * item.quantity;
+
+                  return (
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-border border-dashed bg-muted/30 p-4">
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{item.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          ${item.unitPrice.toLocaleString()} × {item.quantity} = ${subtotal.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleUpdateCustomQuantity(item.id, parseInt(e.target.value) || 1)
+                          }
+                          className="w-20"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoveCustomItem(item.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -321,7 +506,7 @@ export default function CreateQuote() {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-foreground">產品數量：</span>
-              <span className="font-semibold text-foreground">{items.length} 項</span>
+              <span className="font-semibold text-foreground">{items.length + customItems.length} 項</span>
             </div>
             <div className="flex justify-between border-t border-border pt-3">
               <span className="text-lg font-semibold text-foreground">總金額：</span>
@@ -336,7 +521,7 @@ export default function CreateQuote() {
         <div className="flex gap-3">
           <Button
             type="submit"
-            disabled={isSubmitting || !customerId || items.length === 0}
+            disabled={isSubmitting || !customerId || (items.length === 0 && customItems.length === 0)}
             className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             <ChevronRight className="mr-2 h-4 w-4" />

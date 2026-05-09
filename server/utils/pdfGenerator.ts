@@ -26,8 +26,11 @@ async function fetchImageAsBase64(url: string): Promise<string> {
       absoluteUrl = `${baseUrl}${url}`;
     }
     const response = await fetch(absoluteUrl);
-    const buffer = await response.buffer();
-    return buffer.toString('base64');
+    const buffer = await response.buffer?.() || (response as any).arrayBuffer?.();
+    if (buffer instanceof ArrayBuffer) {
+      return Buffer.from(buffer).toString('base64');
+    }
+    return (buffer as Buffer).toString('base64');
   } catch (error) {
     console.warn(`Failed to fetch image from ${url}:`, error);
     return '';
