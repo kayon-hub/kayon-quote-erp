@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Share2, Edit, Trash2, ArrowLeft, Eye } from "lucide-react";
+import { Download, Share2, ArrowLeft, Copy, MessageCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -66,7 +66,10 @@ export default function QuoteDetail() {
   const handleShareLine = async () => {
     if (!quote) return;
     try {
-      const message = `KAYON STUDIO 報價單\n\n報價單號：${quote.quoteNumber}\n客戶：${quote.customer?.companyName}\n金額：$${parseFloat(quote.totalAmount.toString()).toLocaleString()} NTD\n\n${getPDFUrl.data?.url ? `查看報價單：${getPDFUrl.data.url}` : ""}`;
+      // 構建完整的分享訊息
+      const pdfLink = getPDFUrl.data?.url ? `\n\n📄 查看報價單：${getPDFUrl.data.url}` : "";
+      const customerPhone = quote.customer?.phone ? `\n☎️ 聯繫電話：${quote.customer.phone}` : "";
+      const message = `🎵 KAYON STUDIO 報價單\n\n報價單號：${quote.quoteNumber}\n客戶：${quote.customer?.companyName}\n金額：NT$${parseFloat(quote.totalAmount.toString()).toLocaleString()}\n建立日期：${new Date(quote.createdAt).toLocaleDateString("zh-TW")}${customerPhone}${pdfLink}\n\n感謝您的詢問！`;
 
       // LINE 分享連結
       const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
@@ -74,6 +77,20 @@ export default function QuoteDetail() {
       toast.success("已開啟 LINE 分享");
     } catch (error) {
       toast.error("分享失敗");
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!getPDFUrl.data?.url) {
+      toast.error("PDF 尚未生成");
+      return;
+    }
+    try {
+      const shareLink = getPDFUrl.data.url;
+      await navigator.clipboard.writeText(shareLink);
+      toast.success("分享連結已複製到剪貼板");
+    } catch (error) {
+      toast.error("複製失敗");
     }
   };
 
@@ -173,12 +190,19 @@ export default function QuoteDetail() {
                   下載 PDF
                 </Button>
                 <Button
-                  onClick={handleShareLine}
+                  onClick={handleCopyShareLink}
                   variant="outline"
                   className="flex items-center gap-2"
                 >
-                  <Share2 className="h-4 w-4" />
-                  分享
+                  <Copy className="h-4 w-4" />
+                  複製連結
+                </Button>
+                <Button
+                  onClick={handleShareLine}
+                  className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  分享到 LINE
                 </Button>
               </>
             )}
@@ -246,13 +270,13 @@ export default function QuoteDetail() {
                       {item.productName}
                     </td>
                     <td className="px-4 py-3 text-right text-foreground">
-                      ${parseFloat(item.unitPrice.toString()).toLocaleString()}
+                      NT${parseFloat(item.unitPrice.toString()).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right text-foreground">
                       {item.quantity}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-foreground">
-                      ${parseFloat(item.subtotal.toString()).toLocaleString()}
+                      NT${parseFloat(item.subtotal.toString()).toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -266,13 +290,13 @@ export default function QuoteDetail() {
               <div className="flex justify-between">
                 <span className="text-foreground">小計：</span>
                 <span className="font-semibold text-foreground">
-                  ${parseFloat(quote.totalAmount.toString()).toLocaleString()}
+                  NT${parseFloat(quote.totalAmount.toString()).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between border-t border-border pt-2">
                 <span className="text-lg font-bold text-foreground">總金額：</span>
                 <span className="text-2xl font-bold text-primary">
-                  ${parseFloat(quote.totalAmount.toString()).toLocaleString()} NTD
+                  NT${parseFloat(quote.totalAmount.toString()).toLocaleString()}
                 </span>
               </div>
             </div>
