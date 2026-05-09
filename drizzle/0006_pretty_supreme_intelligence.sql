@@ -1,0 +1,1 @@
+ALTER TABLE `quoteItems` ADD `cost` decimal(10,2);

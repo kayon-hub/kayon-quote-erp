@@ -98,6 +98,7 @@ export const quoteItems = mysqlTable("quoteItems", {
   unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(), // 單價
   quantity: int("quantity").notNull(), // 數量
   subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(), // 小計
+  cost: decimal("cost", { precision: 10, scale: 2 }), // 成本（用於報表和利潤計算）
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -271,9 +271,38 @@ export const appRouter = router({
         if (!quote || !quote.pdfUrl) return null;
         return { url: quote.pdfUrl };
       }),
+
+    createCustomItem: protectedProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        productName: z.string().min(1),
+        unitPrice: z.number().min(0),
+        quantity: z.number().min(1),
+        cost: z.number().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const quote = await db.getQuoteById(input.quoteId);
+        if (!quote) throw new Error("Quote not found");
+        const subtotal = input.unitPrice * input.quantity;
+        const result = await db.createQuoteItem({
+          quoteId: input.quoteId,
+          productId: 0,
+          productName: input.productName,
+          unitPrice: input.unitPrice,
+          quantity: input.quantity,
+          subtotal: subtotal,
+          cost: input.cost || null,
+        });
+        const newTotal = parseFloat(quote.totalAmount.toString()) + subtotal;
+        await db.updateQuote(input.quoteId, {
+          totalAmount: newTotal,
+        });
+        return result;
+      }),
   }),
 
-  // ========== 固定條款管理 ==========
+
+  // ========== 固定条款管理 ==========
   fixedTerms: router({
     list: protectedProcedure.query(async () => {
       return db.getFixedTerms();

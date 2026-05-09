@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,7 @@ interface CustomItem {
   productName: string;
   unitPrice: number;
   quantity: number;
+  cost?: number;
 }
 
 export default function CreateQuote() {
@@ -26,6 +27,7 @@ export default function CreateQuote() {
   const { data: products } = trpc.products.list.useQuery();
   const { data: fixedTerms } = trpc.fixedTerms.list.useQuery();
   const createQuote = trpc.quotes.create.useMutation();
+  const createCustomQuoteItem = trpc.quotes.createCustomItem.useMutation();
 
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [items, setItems] = useState<QuoteItemInput[]>([]);
@@ -36,6 +38,7 @@ export default function CreateQuote() {
   const [customProductName, setCustomProductName] = useState("");
   const [customProductPrice, setCustomProductPrice] = useState("");
   const [customProductQuantity, setCustomProductQuantity] = useState(1);
+  const [customProductCost, setCustomProductCost] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -96,12 +99,14 @@ export default function CreateQuote() {
       productName: customProductName,
       unitPrice: parseFloat(customProductPrice),
       quantity: customProductQuantity,
+      cost: customProductCost ? parseFloat(customProductCost) : undefined,
     };
 
     setCustomItems([...customItems, newCustomItem]);
     setCustomProductName("");
     setCustomProductPrice("");
     setCustomProductQuantity(1);
+    setCustomProductCost("");
     setUseCustomProduct(false);
     toast.success("自訂產品已添加");
   };
@@ -127,6 +132,13 @@ export default function CreateQuote() {
     setCustomItems(newCustomItems);
   };
 
+  const handleUpdateCustomCost = (id: string, cost: string) => {
+    const newCustomItems = customItems.map((item) =>
+      item.id === id ? { ...item, cost: cost ? parseFloat(cost) : undefined } : item
+    );
+    setCustomItems(newCustomItems);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -142,29 +154,25 @@ export default function CreateQuote() {
 
     try {
       setIsSubmitting(true);
-      
-      // 構建項目列表，包括自訂產品
-      const allItems = [
-        ...items,
-        ...customItems.map((item) => ({
-          productId: 0, // 使用 0 作為自訂產品的標記
-          quantity: item.quantity,
-          customProductName: item.productName,
-          customUnitPrice: item.unitPrice,
-        })),
-      ];
 
+      // 建立報價單（只包含預設產品）
       const result = await createQuote.mutateAsync({
         customerId,
         items,
         notes: notes || undefined,
       });
-      
-      // 如果有自訂產品，需要通過另一個 API 添加
+
+      // 如果有自訂產品，逐個添加
       if (customItems.length > 0) {
-        // 這裡需要實現添加自訂項目的邏輯
-        // 暫時直接跳轉，後續可以通過編輯報價單來添加
-        toast.info("自訂產品需要在編輯頁面手動添加");
+        for (const customItem of customItems) {
+          await createCustomQuoteItem.mutateAsync({
+            quoteId: result.id,
+            productName: customItem.productName,
+            unitPrice: customItem.unitPrice,
+            quantity: customItem.quantity,
+            cost: customItem.cost || null,
+          });
+        }
       }
 
       toast.success("報價單已建立");
@@ -293,7 +301,7 @@ export default function CreateQuote() {
                     <option value="">-- 選擇產品 --</option>
                     {products?.map((product) => (
                       <option key={product.id} value={product.id}>
-                        {product.name} (${parseFloat(product.unitPrice.toString()).toLocaleString()})
+                        {product.name} (NT${parseFloat(product.unitPrice.toString()).toLocaleString()})
                       </option>
                     ))}
                   </select>
@@ -335,7 +343,7 @@ export default function CreateQuote() {
 
             {/* 自訂產品輸入 */}
             {useCustomProduct && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
                 <div>
                   <label className="block text-sm font-medium text-foreground">
                     產品名稱 *
@@ -371,6 +379,19 @@ export default function CreateQuote() {
                     min="1"
                     value={customProductQuantity}
                     onChange={(e) => setCustomProductQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    成本 (NTD)
+                  </label>
+                  <Input
+                    type="number"
+                    value={customProductCost}
+                    onChange={(e) => setCustomProductCost(e.target.value)}
+                    placeholder="0"
                     className="mt-2"
                   />
                 </div>
@@ -420,7 +441,7 @@ export default function CreateQuote() {
                       <div className="flex-1">
                         <p className="font-medium text-foreground">{product.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          ${unitPrice.toLocaleString()} × {item.quantity} = ${subtotal.toLocaleString()}
+                          NT${unitPrice.toLocaleString()} × {item.quantity} = NT${subtotal.toLocaleString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -452,32 +473,53 @@ export default function CreateQuote() {
                   const subtotal = item.unitPrice * item.quantity;
 
                   return (
-                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-border border-dashed bg-muted/30 p-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{item.productName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          ${item.unitPrice.toLocaleString()} × {item.quantity} = ${subtotal.toLocaleString()}
-                        </p>
+                    <div key={item.id} className="flex flex-col rounded-lg border border-border border-dashed bg-muted/30 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            NT${item.unitPrice.toLocaleString()} × {item.quantity} = NT${subtotal.toLocaleString()}
+                          </p>
+                          {item.cost !== undefined && (
+                            <p className="text-xs text-muted-foreground">
+                              成本：NT${item.cost.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleUpdateCustomQuantity(item.id, parseInt(e.target.value) || 1)
+                            }
+                            className="w-20"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveCustomItem(item.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleUpdateCustomQuantity(item.id, parseInt(e.target.value) || 1)
-                          }
-                          className="w-20"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoveCustomItem(item.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="mt-3 flex items-end gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-muted-foreground">
+                            成本 (NTD)
+                          </label>
+                          <Input
+                            type="number"
+                            value={item.cost || ""}
+                            onChange={(e) => handleUpdateCustomCost(item.id, e.target.value)}
+                            placeholder="0"
+                            className="mt-1"
+                          />
+                        </div>
                       </div>
                     </div>
                   );
@@ -511,7 +553,7 @@ export default function CreateQuote() {
             <div className="flex justify-between border-t border-border pt-3">
               <span className="text-lg font-semibold text-foreground">總金額：</span>
               <span className="text-2xl font-bold text-primary">
-                ${totalAmount.toLocaleString()} NTD
+                NT${totalAmount.toLocaleString()}
               </span>
             </div>
           </div>
