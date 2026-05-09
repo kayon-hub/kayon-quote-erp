@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO products (name, category, description, unitPrice) VALUES ('靜態 MV 製作', 'Visual Design', '搭配歌曲長度，含戶簽提供照片，含基礎剪輯與特效。', 6000);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user GrK5256UuVhPRJo.root --database 7oL8ynvCVb5GvtYeu9Ws9j --execute INSERT INTO products (name, category, description, unitPrice) VALUES ('靜態 MV 製作', 'Visual Design', '搭配歌曲長度，含戶簽提供照片，含基礎剪輯與特效。', 6000);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1827
+}

@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM products WHERE name IN ('原創歌曲製作 (1首)', '原創歌曲製作 (3首)', '原創歌曲製作 (5首)', 'MV 製作 (1支)', 'MV 製作 (3支)'); INSERT INTO products (name, category, description, unitPrice) VALUES ('原創歌曲製作（全曲）', 'Music Production', '合詞曲/編曲/母帶混音/簽音等2份唱NFC貼你專輯2份，預計21-30工作日交付。', 17000); INSERT INTO products (name, category, description, unitPrice) VALUES ('原創歌曲製作(母帶版)', 'Music Production', '合詞曲/編曲/母帶混音，預計21-30工作日交付。', 8000); INSERT INTO products (name, category, description, unitPrice) VALUES ('製作含作加收費用', 'Music Production', '針對歌曲製作，錄音等服務之優先處理費用。', 3000); INSERT INTO products (name, category, description, unitPrice) VALUES ('錄音室加時費', 'Music Production', '錄音室租借與工程師支援，每小時計算。', 1000); UPDATE products SET unitPrice = 6000 WHERE name = 'MV 製作 (1支)';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user GrK5256UuVhPRJo.root --database 7oL8ynvCVb5GvtYeu9Ws9j --execute DELETE FROM products WHERE name IN ('原創歌曲製作 (1首)', '原創歌曲製作 (3首)', '原創歌曲製作 (5首)', 'MV 製作 (1支)', 'MV 製作 (3支)'); INSERT INTO products (name, category, description, unitPrice) VALUES ('原創歌曲製作（全曲）', 'Music Production', '合詞曲/編曲/母帶混音/簽音等2份唱NFC貼你專輯2份，預計21-30工作日交付。', 17000); INSERT INTO products (name, category, description, unitPrice) VALUES ('原創歌曲製作(母帶版)', 'Music Production', '合詞曲/編曲/母帶混音，預計21-30工作日交付。', 8000); INSERT INTO products (name, category, description, unitPrice) VALUES ('製作含作加收費用', 'Music Production', '針對歌曲製作，錄音等服務之優先處理費用。', 3000); INSERT INTO products (name, category, description, unitPrice) VALUES ('錄音室加時費', 'Music Production', '錄音室租借與工程師支援，每小時計算。', 1000); UPDATE products SET unitPrice = 6000 WHERE name = 'MV 製作 (1支)';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3031
+}
